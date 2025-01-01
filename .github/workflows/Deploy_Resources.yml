@@ -36,7 +36,7 @@ jobs:
 
       - name: Upload Plan to S3
         run: |
-          aws s3 cp tfplan s3://pradeep-terraform-1234333/playback_improved/ --region ${{ secrets.AWS_REGION }}
+          aws s3 cp tfplan s3://pradeep-terraform-1234333/playback_tfstate/ --region ${{ secrets.AWS_REGION }}
 
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
