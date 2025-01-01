@@ -79,5 +79,5 @@ jobs:
         run: |
           changes=$(jq -r '
             .resource_changes[] | 
-            select(.change.actions != null) | '
+            select(.change.actions != null) | ')
             
