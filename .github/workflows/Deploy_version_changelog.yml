@@ -1,7 +1,7 @@
 name: Deploy Infrastructure and Update Changelog
 
 on:
-  push:
+ # push:
 
 permissions: 
   id-token: write 
