@@ -1,0 +1,42 @@
+name: Deploy Infrastructure
+
+on:
+  push:
+
+permissions: 
+  id-token: write 
+  contents: read   
+
+jobs:
+  deploy:
+    name: Deploy Terraform
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-session-name: DeploySession
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+
+      - name: Upload Plan to S3
+        run: |
+          aws s3 cp tfplan s3://pradeep-terraform-1234333/playback_improved/ --region ${{ secrets.AWS_REGION }}
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
