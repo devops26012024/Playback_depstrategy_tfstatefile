@@ -1,0 +1,111 @@
+name: Deploy Infrastructure and Update Changelog
+
+on:
+  #push:
+
+permissions: 
+  id-token: write 
+  contents: write
+
+jobs:
+  deploy:
+    name: Deploy Terraform and Update Versioning
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout Repository
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+
+      # Step 2: Configure AWS Credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-session-name: DeployAndChangelogSession
+
+      # Step 3: Setup Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+
+      # Step 4: Initialize Terraform
+      - name: Terraform Init
+        run: terraform init
+
+      # Step 5: Terraform Plan
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+
+
+      # Step 7: Terraform Apply
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+
+  Version_changeLog:
+    needs: deploy
+    name: Update Versioning
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout Repository
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+
+      # Step 2: Configure AWS Credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-session-name: DeployAndChangelogSession
+
+      # Step 3: Setup Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+
+      # Step 4: Initialize Terraform
+      - name: Terraform Init
+        run: terraform init
+      
+      # Step 8: Download tfstate from S3
+      - name: Download tfstate from S3
+        run: |
+          aws s3 cp s3://pradeep-terraform-1234333/playback_tfstate/terraform.tfstate ./terraform.tfstate --region ${{ secrets.AWS_REGION }}
+
+      # Step 9: Initialize Terraform Again for tfstate Analysis
+      - name: Terraform Init (for tfstate analysis)
+        run: terraform init
+
+      # Step 10: Increment Version
+      - name: Increment Version
+        id: version
+        run: |
+          if [ ! -f VERSION ]; then echo "0.0.0" > VERSION; fi
+          current_version=$(cat VERSION)
+          new_version=$(echo $current_version | awk -F. '{$NF += 1; OFS="."; print $0}')
+          echo $new_version > VERSION
+          echo "new_version=$new_version" >> $GITHUB_ENV
+
+      # Step 11: Show Terraform Plan in JSON
+      - name: Convert tfstate to JSON
+        run: terraform show -json terraform.tfstate > tfstate_output.json
+
+      # Step 11: Show Terraform Plan in JSON
+      - name: Debug
+        run: cat tfstate_output.json
+
+# Step 12: Generate Changelog from JSON
+     # - name: Generate Changelog Entry
+       # id: changelog
+      #  run: |
+     #     changes=$(jq -r '.resource_changes[] | select(.change.actions != null) | ')
+            
